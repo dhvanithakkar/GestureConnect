@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { HandMetal, Upload, Camera } from 'lucide-react';
 import SignLanguageDetector from '../components/SignLanguageDetection';
+import EmotionDetector from '../components/EmotionDetectionStream';
 
 const SignLanguage = () => {
   const [selectedLanguage, setSelectedLanguage] = useState('asl');
@@ -47,7 +48,12 @@ const SignLanguage = () => {
               <div className="aspect-w-16 aspect-h-9 bg-gray-200 rounded-lg">
                 <div className="flex items-center justify-center h-64 bg-gray-100 rounded-lg">
                   {inputMethod === 'camera' ? (
-                    <p className="text-gray-500">Camera feed will appear here</p>
+                              <div className="aspect-w-16 aspect-h-9 bg-gray-200 rounded-lg mb-6">
+                              Camera feed or upload section would go here
+                              {/* <SignLanguageDetector /> */}
+                            </div>
+                  
+                    // <p className="text-gray-500">Camera feed will appear here</p>
                   ) : (
                     <div className="text-center">
                       <Upload className="w-12 h-12 text-gray-400 mx-auto mb-2" />
@@ -98,8 +104,9 @@ const SignLanguage = () => {
             <div className="bg-white rounded-lg shadow-lg p-8">
               <h2 className="text-2xl font-semibold mb-4">Translation Result</h2>
               <div className="p-4 bg-gray-50 rounded-lg min-h-[200px]">
-                <p className="text-gray-500">Translation will appear here...</p>
-              </div>
+                {/* <p className="text-gray-500">Translation will appear here...</p> */}
+                <p className="text">IPD</p>
+                </div>
             </div>
 
             <div className="bg-white rounded-lg shadow-lg p-8">

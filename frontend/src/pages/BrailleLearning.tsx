@@ -1,17 +1,89 @@
+
 import React, { useState } from 'react';
-import { BookOpen, GraduationCap, Award } from 'lucide-react';
+import { BookOpen, GraduationCap, Award, ArrowLeft, ArrowRight, CheckCircle, XCircle } from 'lucide-react';
+import LessonSelector from './LessonSelector';
+import BrailleCharacterDisplay from './BrailleCharacterDisplay';
+import BraillePracticeArea from './BraillePracticeArea';
+import QuizSection from './QuizSection';
 
 const BrailleLearning = () => {
   const [selectedLevel, setSelectedLevel] = useState('beginner');
   const [currentLesson, setCurrentLesson] = useState(1);
-
+  const [activeTab, setActiveTab] = useState('learn'); // 'learn', 'practice', 'quiz'
+  const [selectedChar, setSelectedChar] = useState(null);
+  
+  // Extended character set
   const brailleCharacters = [
     { symbol: '⠁', letter: 'a', dots: '1' },
     { symbol: '⠃', letter: 'b', dots: '1-2' },
     { symbol: '⠉', letter: 'c', dots: '1-4' },
     { symbol: '⠙', letter: 'd', dots: '1-4-5' },
     { symbol: '⠑', letter: 'e', dots: '1-5' },
+    { symbol: '⠋', letter: 'f', dots: '1-2-4' },
+    { symbol: '⠛', letter: 'g', dots: '1-2-4-5' },
+    { symbol: '⠓', letter: 'h', dots: '1-2-5' },
   ];
+
+  // Number representations
+  const brailleNumbers = [
+    { symbol: '⠼⠁', letter: '1', dots: '3-4-5-6-1' },
+    { symbol: '⠼⠃', letter: '2', dots: '3-4-5-6-1-2' },
+    { symbol: '⠼⠉', letter: '3', dots: '3-4-5-6-1-4' },
+    { symbol: '⠼⠙', letter: '4', dots: '3-4-5-6-1-4-5' },
+    { symbol: '⠼⠑', letter: '5', dots: '3-4-5-6-1-5' },
+    { symbol: '⠼⠋', letter: '6', dots: '3-4-5-6-1-2-4' },
+    { symbol: '⠼⠛', letter: '7', dots: '3-4-5-6-1-2-4-5' },
+    { symbol: '⠼⠓', letter: '8', dots: '3-4-5-6-1-2-5' },
+    { symbol: '⠼⠊', letter: '9', dots: '3-4-5-6-2-4' },
+    { symbol: '⠼⠚', letter: '0', dots: '3-4-5-6-2-4-5' }
+  ];
+
+  // Word representations
+  const brailleWords = [
+    { symbol: '⠞⠓⠑', letter: 'the', dots: '2-3-4_1-2-5_1-5', description: 'Most common word in English' },
+    { symbol: '⠁⠝⠙', letter: 'and', dots: '1_1-3-4_1-4-5', description: 'Conjunction connecting words or clauses' },
+    { symbol: '⠋⠕⠗', letter: 'for', dots: '1-2-4_1-3-5_1-2-3-5', description: 'Preposition showing purpose' },
+    { symbol: '⠺⠊⠞⠓', letter: 'with', dots: '2-4-5-6_2-4_2-3-4_1-2-5', description: 'Preposition indicating accompaniment' },
+    { symbol: '⠽⠕⠥', letter: 'you', dots: '1-3-4-5-6_1-3-5_1-3-6', description: 'Second-person pronoun' },
+    { symbol: '⠞⠓⠁⠞', letter: 'that', dots: '2-3-4_1-2-5_1_2-3-4', description: 'Demonstrative pronoun' }
+  ];
+
+  // Lessons structure
+  const lessons = {
+    beginner: [
+      { id: 1, title: "Introduction to Braille", chars: brailleCharacters.slice(0, 5) },
+      { id: 2, title: "Letters A-H", chars: brailleCharacters },
+      { id: 3, title: "Practice Reading", chars: brailleCharacters }
+    ],
+    intermediate: [
+      { id: 1, title: "Numbers 0-5", chars: brailleNumbers.slice(0, 6) },
+      { id: 2, title: "Numbers 6-9", chars: brailleNumbers.slice(6, 10) },
+      { id: 3, title: "All Numbers", chars: brailleNumbers }
+    ],
+    advanced: [
+      { id: 1, title: "Common Words", chars: brailleWords.slice(0, 3) },
+      { id: 2, title: "More Common Words", chars: brailleWords.slice(3) },
+      { id: 3, title: "All Words", chars: brailleWords }
+    ]
+  };
+
+  const currentLessonData = lessons[selectedLevel]?.find(l => l.id === currentLesson) || lessons[selectedLevel]?.[0];
+
+  const handleNextLesson = () => {
+    const currentLevelLessons = lessons[selectedLevel];
+    if (currentLessonData && currentLesson < currentLevelLessons.length) {
+      setCurrentLesson(currentLesson + 1);
+    }
+  };
+
+  const handlePreviousLesson = () => {
+    if (currentLesson > 1) {
+      setCurrentLesson(currentLesson - 1);
+    }
+  };
+
+  const totalLessons = lessons[selectedLevel]?.length || 0;
+  const progressPercentage = (currentLesson / totalLessons) * 100;
 
   return (
     <div className="min-h-screen bg-gray-50 py-12">
@@ -26,85 +98,78 @@ const BrailleLearning = () => {
 
         <div className="grid md:grid-cols-3 gap-8">
           <div className="bg-white rounded-lg shadow-lg p-8">
-            <h2 className="text-2xl font-semibold mb-4">Learning Path</h2>
-            <div className="space-y-4">
-              <button
-                className={`w-full py-2 px-4 rounded-lg text-left ${
-                  selectedLevel === 'beginner'
-                    ? 'bg-yellow-100 text-yellow-700'
-                    : 'bg-gray-100 hover:bg-gray-200'
-                }`}
-                onClick={() => setSelectedLevel('beginner')}
-              >
-                Beginner
-              </button>
-              <button
-                className={`w-full py-2 px-4 rounded-lg text-left ${
-                  selectedLevel === 'intermediate'
-                    ? 'bg-yellow-100 text-yellow-700'
-                    : 'bg-gray-100 hover:bg-gray-200'
-                }`}
-                onClick={() => setSelectedLevel('intermediate')}
-              >
-                Intermediate
-              </button>
-              <button
-                className={`w-full py-2 px-4 rounded-lg text-left ${
-                  selectedLevel === 'advanced'
-                    ? 'bg-yellow-100 text-yellow-700'
-                    : 'bg-gray-100 hover:bg-gray-200'
-                }`}
-                onClick={() => setSelectedLevel('advanced')}
-              >
-                Advanced
-              </button>
-            </div>
-
-            <div className="mt-8">
-              <h3 className="text-lg font-semibold mb-4">Progress</h3>
-              <div className="w-full bg-gray-200 rounded-full h-2.5">
-                <div className="bg-yellow-600 h-2.5 rounded-full" style={{ width: '25%' }}></div>
-              </div>
-              <p className="text-sm text-gray-600 mt-2">Lesson {currentLesson} of 20</p>
-            </div>
+            <LessonSelector 
+              selectedLevel={selectedLevel}
+              setSelectedLevel={setSelectedLevel}
+              currentLesson={currentLesson}
+              setCurrentLesson={setCurrentLesson}
+              progressPercentage={progressPercentage}
+              totalLessons={totalLessons}
+              lessons={lessons}
+            />
           </div>
 
           <div className="bg-white rounded-lg shadow-lg p-8 md:col-span-2">
-            <h2 className="text-2xl font-semibold mb-6">Current Lesson</h2>
-            <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
-              {brailleCharacters.map((char) => (
-                <div
-                  key={char.letter}
-                  className="p-4 bg-gray-50 rounded-lg text-center hover:bg-yellow-50 cursor-pointer"
+            <div className="flex justify-between items-center mb-6">
+              <h2 className="text-2xl font-semibold">
+                {currentLessonData?.title || "Lesson"}
+              </h2>
+              <div className="flex space-x-2">
+                <button 
+                  className={`px-4 py-2 rounded-lg ${activeTab === 'learn' ? 'bg-yellow-100 text-yellow-700' : 'bg-gray-100 hover:bg-gray-200'}`}
+                  onClick={() => setActiveTab('learn')}
                 >
-                  <p className="text-4xl mb-2">{char.symbol}</p>
-                  <p className="text-lg font-medium">Letter: {char.letter}</p>
-                  <p className="text-sm text-gray-600">Dots: {char.dots}</p>
-                </div>
-              ))}
-            </div>
-
-            <div className="mt-8">
-              <h3 className="text-lg font-semibold mb-4">Practice Area</h3>
-              <div className="p-4 bg-gray-50 rounded-lg">
-                <p className="text-center text-gray-600">
-                  Click on the characters above to practice writing them
-                </p>
+                  Learn
+                </button>
+                <button 
+                  className={`px-4 py-2 rounded-lg ${activeTab === 'practice' ? 'bg-yellow-100 text-yellow-700' : 'bg-gray-100 hover:bg-gray-200'}`}
+                  onClick={() => setActiveTab('practice')}
+                >
+                  Practice
+                </button>
+                <button 
+                  className={`px-4 py-2 rounded-lg ${activeTab === 'quiz' ? 'bg-yellow-100 text-yellow-700' : 'bg-gray-100 hover:bg-gray-200'}`}
+                  onClick={() => setActiveTab('quiz')}
+                >
+                  Quiz
+                </button>
               </div>
             </div>
 
+            {activeTab === 'learn' && (
+              <BrailleCharacterDisplay 
+                characters={currentLessonData?.chars || brailleCharacters} 
+                selectedChar={selectedChar}
+                setSelectedChar={setSelectedChar}
+              />
+            )}
+            
+            {activeTab === 'practice' && (
+              <BraillePracticeArea 
+                selectedChar={selectedChar || (currentLessonData?.chars && currentLessonData.chars[0])} 
+              />
+            )}
+            
+            {activeTab === 'quiz' && (
+              <QuizSection 
+                characters={currentLessonData?.chars || brailleCharacters}
+              />
+            )}
+
             <div className="mt-8 flex justify-between">
               <button
-                className="py-2 px-4 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300"
-                onClick={() => setCurrentLesson(Math.max(1, currentLesson - 1))}
+                className="py-2 px-4 flex items-center gap-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300"
+                onClick={handlePreviousLesson}
+                disabled={currentLesson === 1}
               >
-                Previous Lesson
+                <ArrowLeft className="w-4 h-4" /> Previous Lesson
               </button>
               <button
-                className="py-2 px-4 bg-yellow-600 text-white rounded-lg hover:bg-yellow-700"
-                onClick={() => setCurrentLesson(currentLesson + 1)}
+                className="py-2 px-4 flex items-center gap-2 bg-yellow-600 text-white rounded-lg hover:bg-yellow-700"
+                onClick={handleNextLesson}
+                disabled={currentLesson === totalLessons}
               >
-                Next Lesson
+                Next Lesson <ArrowRight className="w-4 h-4" />
               </button>
             </div>
           </div>
@@ -115,9 +180,9 @@ const BrailleLearning = () => {
             <GraduationCap className="w-8 h-8 text-yellow-600 mb-4" />
             <h3 className="text-xl font-semibold mb-2">Learning Resources</h3>
             <ul className="space-y-2 text-gray-600">
-              <li>Video tutorials</li>
-              <li>Practice exercises</li>
-              <li>Downloadable materials</li>
+              <li className="flex items-center gap-2"><CheckCircle className="w-4 h-4 text-yellow-600" /> Video tutorials</li>
+              <li className="flex items-center gap-2"><CheckCircle className="w-4 h-4 text-yellow-600" /> Practice exercises</li>
+              <li className="flex items-center gap-2"><CheckCircle className="w-4 h-4 text-yellow-600" /> Downloadable materials</li>
             </ul>
           </div>
 
@@ -125,9 +190,9 @@ const BrailleLearning = () => {
             <Award className="w-8 h-8 text-yellow-600 mb-4" />
             <h3 className="text-xl font-semibold mb-2">Achievements</h3>
             <ul className="space-y-2 text-gray-600">
-              <li>Complete lessons</li>
-              <li>Practice streak</li>
-              <li>Mastery badges</li>
+              <li className="flex items-center gap-2"><CheckCircle className="w-4 h-4 text-yellow-600" /> Complete lessons</li>
+              <li className="flex items-center gap-2"><CheckCircle className="w-4 h-4 text-yellow-600" /> Practice streak</li>
+              <li className="flex items-center gap-2"><CheckCircle className="w-4 h-4 text-yellow-600" /> Mastery badges</li>
             </ul>
           </div>
 
@@ -135,9 +200,9 @@ const BrailleLearning = () => {
             <BookOpen className="w-8 h-8 text-yellow-600 mb-4" />
             <h3 className="text-xl font-semibold mb-2">Additional Tools</h3>
             <ul className="space-y-2 text-gray-600">
-              <li>Braille translator</li>
-              <li>Reference guide</li>
-              <li>Progress tracking</li>
+              <li className="flex items-center gap-2"><CheckCircle className="w-4 h-4 text-yellow-600" /> Braille translator</li>
+              <li className="flex items-center gap-2"><CheckCircle className="w-4 h-4 text-yellow-600" /> Reference guide</li>
+              <li className="flex items-center gap-2"><CheckCircle className="w-4 h-4 text-yellow-600" /> Progress tracking</li>
             </ul>
           </div>
         </div>

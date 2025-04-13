@@ -44,6 +44,8 @@ def detect_emotion(frame):
         pred = model.predict(img)
         prediction_label = labels[pred.argmax()]
         confidence = float(np.max(pred))
+
+        # TODO: DAMPEN SOUND VIA LIBROSA LATER.
         
         # Store face details and emotion
         results.append({
@@ -52,7 +54,8 @@ def detect_emotion(frame):
             'width': int(r),
             'height': int(s),
             'emotion': prediction_label,
-            'confidence': confidence
+            'confidence': confidence,
+            'sound': prediction_label + ".wav"
         })
     
     return results

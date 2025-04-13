@@ -1,14 +1,14 @@
 import cv2
-import mediapipe as mp
+import mediapipe as mp # type: ignore
 import copy
 import itertools
-from tensorflow import keras
+from tensorflow import keras # type: ignore
 import numpy as np
 import pandas as pd
 import string
 
 # load the saved model from file
-model = keras.models.load_model("model.h5")
+model = keras.models.load_model("isl_model.h5")
 
 mp_drawing = mp.solutions.drawing_utils
 mp_drawing_styles = mp.solutions.drawing_styles

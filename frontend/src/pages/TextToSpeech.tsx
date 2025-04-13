@@ -4,6 +4,87 @@ import { MessageSquare, Play, Pause, Save } from 'lucide-react';
 const TextToSpeech = () => {
   const [text, setText] = useState('');
   const [isPlaying, setIsPlaying] = useState(false);
+  const [audioUrl, setAudioUrl] = useState(null);
+  const [isLoading, setIsLoading] = useState(false);
+  const [audioElement, setAudioElement] = useState(null);
+
+  const convertTextToSpeech = async () => {
+    if (!text.trim()) return;
+    
+    try {
+      setIsLoading(true);
+      
+      const response = await fetch('http://localhost:8000/labs-tts/', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ text }),
+      });
+      
+      if (!response.ok) {
+        throw new Error('Failed to convert text to speech');
+      }
+      
+      const blob = await response.blob();
+      const url = URL.createObjectURL(blob);
+      setAudioUrl(url);
+      
+      // Create and configure audio element
+      const audio = new Audio(url);
+      audio.onended = () => {
+        setIsPlaying(false);
+      };
+      setAudioElement(audio);
+      
+      // Auto-play the audio
+      audio.play();
+      setIsPlaying(true);
+    } catch (error) {
+      console.error('Error converting text to speech:', error);
+      alert('Failed to convert text to speech. Please try again.');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handlePlayPause = () => {
+    if (!audioElement && !isPlaying) {
+      // First time playing, need to convert
+      convertTextToSpeech();
+    } else if (audioElement) {
+      // Toggle play/pause
+      if (isPlaying) {
+        audioElement.pause();
+      } else {
+        audioElement.play();
+      }
+      setIsPlaying(!isPlaying);
+    }
+  };
+
+  const saveAudio = () => {
+    if (!audioUrl) {
+      // If no audio generated yet, generate it first
+      convertTextToSpeech().then(() => {
+        // After generation, trigger download
+        triggerDownload();
+      });
+    } else {
+      triggerDownload();
+    }
+  };
+
+  const triggerDownload = () => {
+    if (!audioUrl) return;
+    
+    const a = document.createElement('a');
+    a.href = audioUrl;
+    a.download = 'speech.mp3';
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+  };
 
   return (
     <div className="min-h-screen bg-gray-50 py-12">
@@ -28,10 +109,13 @@ const TextToSpeech = () => {
 
             <div className="mt-4 flex space-x-4">
               <button
-                className="flex-1 bg-purple-600 text-white py-2 px-4 rounded-lg hover:bg-purple-700 transition-colors flex items-center justify-center"
-                onClick={() => setIsPlaying(!isPlaying)}
+                className={`flex-1 ${isLoading ? 'bg-gray-400' : 'bg-purple-600 hover:bg-purple-700'} text-white py-2 px-4 rounded-lg transition-colors flex items-center justify-center`}
+                onClick={handlePlayPause}
+                disabled={isLoading || !text.trim()}
               >
-                {isPlaying ? (
+                {isLoading ? (
+                  'Converting...'
+                ) : isPlaying ? (
                   <>
                     <Pause className="w-5 h-5 mr-2" /> Pause
                   </>
@@ -41,7 +125,11 @@ const TextToSpeech = () => {
                   </>
                 )}
               </button>
-              <button className="flex-1 bg-gray-200 text-gray-700 py-2 px-4 rounded-lg hover:bg-gray-300 transition-colors flex items-center justify-center">
+              <button 
+                className={`flex-1 ${isLoading || !text.trim() ? 'bg-gray-200 text-gray-400' : 'bg-gray-200 text-gray-700 hover:bg-gray-300'} py-2 px-4 rounded-lg transition-colors flex items-center justify-center`}
+                onClick={saveAudio}
+                disabled={isLoading || !text.trim()}
+              >
                 <Save className="w-5 h-5 mr-2" /> Save Audio
               </button>
             </div>
@@ -56,7 +144,7 @@ const TextToSpeech = () => {
                     Voice Selection
                   </label>
                   <select className="w-full p-2 border rounded-lg">
-                    <option>Natural Voice 1</option>
+                    <option value="JBFqnCBsd6RMkjVDRZzb">Natural Voice 1</option>
                     <option>Natural Voice 2</option>
                     <option>Natural Voice 3</option>
                   </select>

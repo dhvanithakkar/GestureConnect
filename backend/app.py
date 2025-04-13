@@ -1,15 +1,29 @@
-from fastapi import FastAPI, WebSocket, WebSocketDisconnect
-from fastapi.middleware.cors import CORSMiddleware
+import whisper
+import asyncio
+import os
+import uuid
 import cv2
 import numpy as np
 import base64
-from keras.models import model_from_json # type: ignore
-from models.emotion_detection_model import detect_emotion
-from models.isl_prediction_model import detect_sign_language
+from elevenlabs import ElevenLabs, save
+from fastapi import FastAPI, UploadFile, File, HTTPException, Body, WebSocket, WebSocketDisconnect
+from fastapi.middleware.cors import CORSMiddleware
+from starlette.responses import FileResponse
 from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.requests import Request
 from starlette.responses import Response
+from pydantic import BaseModel
+from models.emotion_detection_model import detect_emotion
+from models.isl_prediction_model import detect_sign_language
 
+# Set Eleven Labs API Key
+client = ElevenLabs(
+    api_key="sk_f8cbe6100a59a43ed4be55b8c0f3f972e134844516f0e239",
+)
+# Load Whisper model
+voice_model = whisper.load_model("tiny")
+
+# Custom CORS middleware for WebSocket connections
 class CustomCORSMiddleware(BaseHTTPMiddleware):
     async def dispatch(self, request: Request, call_next):
         # Handle WebSocket connections
@@ -31,13 +45,74 @@ class CustomCORSMiddleware(BaseHTTPMiddleware):
         response = await call_next(request)
         return response
 
+# Initialize FastAPI app
 app = FastAPI()
 
 # Add custom CORS middleware
 app.add_middleware(CustomCORSMiddleware)
 
+# Add standard CORS middleware
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
+# Define request body model for TTS
+class TTSNER(BaseModel):
+    text: str
+
+# Text-to-Speech endpoint
+@app.post("/labs-tts/")
+async def labs_tts(request: TTSNER = Body(...)):
+    try:
+        out = f"{uuid.uuid4()}.ogg"
+
+        async def remove():
+            loop = asyncio.get_event_loop()
+            await loop.run_in_executor(None, lambda: os.remove(out))
+
+        audio = client.text_to_speech.convert(
+            voice_id="JBFqnCBsd6RMkjVDRZzb",
+            output_format="mp3_44100_128",
+            text= request.text,
+            model_id="eleven_multilingual_v2",
+        )
+
+        save(audio, out)
+        
+        return FileResponse(out, headers={"Content-Disposition": f"attachment; filename={out}"}, background=remove)
+    except HTTPException as e:
+        raise e
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+# Speech-to-Text endpoint
+@app.post("/transcribe/")
+async def transcribe_audio(file: UploadFile = File(...)):
+    try:
+        audio_path = f"{uuid.uuid4()}.webm"
+        
+        with open(audio_path, "wb") as f:
+            f.write(await file.read())
+        
+        result = voice_model.transcribe(whisper.pad_or_trim(whisper.load_audio(audio_path)))
+        text = result["text"]
+        src_lang = result["language"]
+        
+        os.remove(audio_path)
+        
+        return {"text": text, "src_lang": src_lang}
+    except HTTPException as e:
+        raise e
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+# Emotion detection WebSocket endpoint
 @app.websocket("/ws/emotion-detection")
-async def websocket_endpoint(websocket: WebSocket):
+async def emotion_detection_websocket(websocket: WebSocket):
     await websocket.accept()
     try:
         while True:
@@ -61,19 +136,9 @@ async def websocket_endpoint(websocket: WebSocket):
         print(f"Error in websocket: {e}")
         await websocket.close()
 
-
-# Add standard CORS middleware for additional protection
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=["http://localhost:3000", "https://localhost:3000"],
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
-)
-
-@app.websocket("/ws/sign-language-detection")
-async def websocket_endpoint(websocket: WebSocket):
-    # Add CORS headers manually
+# Sign language detection WebSocket endpoint
+@app.websocket("/ws/isl-sign-language-detection")
+async def sign_language_detection_websocket(websocket: WebSocket):
     await websocket.accept()
     
     try:
@@ -101,4 +166,4 @@ async def websocket_endpoint(websocket: WebSocket):
 if __name__ == "__main__":
     import uvicorn
     # Run on all interfaces and port 8000
-    uvicorn.run(app, host="127.0.0.0", port=8000)
+    uvicorn.run(app, host="0.0.0.0", port=8000)

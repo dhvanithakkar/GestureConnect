@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { HandMetal, Upload, Camera } from 'lucide-react';
-import SignLanguageDetector from '../components/SignLanguageDetection';
-import EmotionDetector from '../components/EmotionDetectionStream';
+// import SignLanguageDetector from '../components/SignLanguageDetection';
+// import EmotionDetector from '../components/EmotionDetectionStream';
 
 const SignLanguage = () => {
   const [selectedLanguage, setSelectedLanguage] = useState('asl');

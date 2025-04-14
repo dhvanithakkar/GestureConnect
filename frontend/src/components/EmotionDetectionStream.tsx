@@ -1,3 +1,4 @@
+
 import React, { useEffect, useRef, useState, useCallback } from 'react';
 import { AlertTriangle, Smile, Frown, Meh, Compass, Droplet } from 'lucide-react';
 
@@ -9,18 +10,45 @@ interface EmotionDetection {
   height: number;
   emotion: string;
   confidence: number;
-  sound?: string;
 }
 
-// Define all possible emotions with their corresponding icons
+// Define all possible emotions with their corresponding icons and sounds
 const ALL_EMOTIONS = {
-  'angry': { icon: <AlertTriangle color="red" />, color: 'bg-red-600' },
-  'disgust': { icon: <Droplet color="green" />, color: 'bg-green-600' },
-  'fear': { icon: <AlertTriangle color="purple" />, color: 'bg-purple-600' },
-  'happy': { icon: <Smile color="yellow" />, color: 'bg-yellow-500' },
-  'neutral': { icon: <Meh color="gray" />, color: 'bg-gray-500' },
-  'sad': { icon: <Frown color="blue" />, color: 'bg-blue-600' },
-  'surprise': { icon: <Compass color="orange" />, color: 'bg-orange-500' }
+  'angry': { 
+    icon: <AlertTriangle className="h-6 w-6" color="red" />, 
+    color: 'bg-red-600',
+    sound: '/sounds/beep.mp3'
+  },
+  'disgust': { 
+    icon: <Droplet className="h-6 w-6" color="green" />, 
+    color: 'bg-green-600',
+    sound: '/sounds/beep.mp3'
+  },
+  'fear': { 
+    icon: <AlertTriangle className="h-6 w-6" color="purple" />, 
+    color: 'bg-purple-600',
+    sound: '/sounds/beep.mp3'
+  },
+  'happy': { 
+    icon: <Smile className="h-6 w-6" color="#FFD700" />, 
+    color: 'bg-yellow-500',
+    sound: '/sounds/beep.mp3'
+  },
+  'neutral': { 
+    icon: <Meh className="h-6 w-6" color="gray" />, 
+    color: 'bg-gray-500',
+    sound: '/sounds/beep.mp3'
+  },
+  'sad': { 
+    icon: <Frown className="h-6 w-6" color="blue" />, 
+    color: 'bg-blue-600',
+    sound: '/sounds/beep.mp3'
+  },
+  'surprise': { 
+    icon: <Compass className="h-6 w-6" color="orange" />, 
+    color: 'bg-orange-500',
+    sound: '/sounds/beep.mp3'
+  }
 };
 
 const EmotionDetector: React.FC = () => {
@@ -31,6 +59,18 @@ const EmotionDetector: React.FC = () => {
   const [isConnected, setIsConnected] = useState(false);
   const [isDetecting, setIsDetecting] = useState(false);
   const animationFrameRef = useRef<number | null>(null);
+  const audioRefs = useRef<Record<string, HTMLAudioElement>>({});
+  const lastPlayedTimeRef = useRef<Record<string, number>>({});
+  const [emotionThresholdsPassed, setEmotionThresholdsPassed] = useState<Record<string, boolean>>({});
+
+  // Initialize audio elements for each emotion
+  useEffect(() => {
+    Object.entries(ALL_EMOTIONS).forEach(([emotion, { sound }]) => {
+      const audio = new Audio(sound);
+      audioRefs.current[emotion] = audio;
+      lastPlayedTimeRef.current[emotion] = 0;
+    });
+  }, []);
 
   // Function to capture and send a frame
   const captureAndSendFrame = useCallback(() => {
@@ -194,23 +234,56 @@ const EmotionDetector: React.FC = () => {
     }
   });
 
+  // Play sounds when emotion confidence passes threshold (60%)
+  useEffect(() => {
+    const THRESHOLD = 0.6; // 60% confidence threshold
+    const COOLDOWN_MS = 3000; // 3 seconds cooldown between sounds for the same emotion
+
+    const newThresholdsPassed: Record<string, boolean> = {};
+    const currentTime = Date.now();
+
+    Object.entries(emotionConfidenceMap).forEach(([emotion, confidence]) => {
+      const previouslyPassed = emotionThresholdsPassed[emotion] || false;
+      const nowPassing = confidence >= THRESHOLD;
+      
+      newThresholdsPassed[emotion] = nowPassing;
+      
+      // Play sound if we just crossed the threshold and haven't played recently
+      if (nowPassing && !previouslyPassed && audioRefs.current[emotion]) {
+        const lastPlayed = lastPlayedTimeRef.current[emotion] || 0;
+        if (currentTime - lastPlayed > COOLDOWN_MS) {
+          console.log(`Playing sound for ${emotion} at ${confidence.toFixed(2)} confidence`);
+          
+          // Play the sound
+          audioRefs.current[emotion].currentTime = 0;
+          audioRefs.current[emotion].play().catch(err => console.error('Error playing sound:', err));
+          
+          // Update last played time
+          lastPlayedTimeRef.current[emotion] = currentTime;
+        }
+      }
+    });
+
+    setEmotionThresholdsPassed(newThresholdsPassed);
+  }, [emotionConfidenceMap]);
+
   return (
-    <div className="emotion-detector p-4 bg-gray-100 min-h-screen">
-      <div className="container mx-auto">
-        <h1 className="text-2xl font-bold mb-4 text-center">
-          Emotion Recognizer 
-          <span className={`ml-2 ${isConnected ? 'text-green-500' : 'text-red-500'}`}>
+    <div className="emotion-detector p-4 min-h-screen">
+      <div className="max-w-4xl mx-auto">
+        <h1 className="text-3xl font-bold mb-4 text-center flex items-center justify-center gap-2">
+          Emotion Detector
+          <span className={`ml-2 inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${isConnected ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}`}>
             {isConnected ? '🟢 Connected' : '🔴 Disconnected'}
           </span>
         </h1>
         
-        <div className="relative max-w-2xl mx-auto bg-white shadow-lg rounded-lg overflow-hidden">
+        <div className="relative mx-auto bg-white shadow-lg rounded-lg overflow-hidden">
           <video 
             ref={videoRef} 
             autoPlay 
             playsInline 
             muted 
-            className="w-full"
+            className="w-full h-auto"
           />
           <canvas 
             ref={canvasRef} 
@@ -234,14 +307,14 @@ const EmotionDetector: React.FC = () => {
               >
                 {emotion.emotion} ({(emotion.confidence * 100).toFixed(1)}%)
               </div>
-              <div className="absolute top-0 right-0 bg-white bg-opacity-50 rounded-full p-1">
-                {ALL_EMOTIONS[emotion.emotion as keyof typeof ALL_EMOTIONS]?.icon || <Meh color="gray" />}
+              <div className="absolute top-0 right-0 bg-white bg-opacity-75 rounded-full p-1">
+                {ALL_EMOTIONS[emotion.emotion as keyof typeof ALL_EMOTIONS]?.icon || <Meh className="h-6 w-6" color="gray" />}
               </div>
             </div>
           ))}
         </div>
 
-        <div className="grid grid-cols-2 gap-4 mt-6 max-w-2xl mx-auto">
+        <div className="grid grid-cols-2 gap-4 mt-6">
           <button 
             className={`py-2 px-4 rounded-lg transition-colors ${
               isDetecting 
@@ -264,15 +337,17 @@ const EmotionDetector: React.FC = () => {
           </label>
         </div>
 
-        <div className="border-t pt-6 mt-6 max-w-2xl mx-auto">
-          <h2 className="text-2xl font-semibold mb-4">Emotion Dashboard</h2>
+        <div className="pt-6 mt-6">
+          <h2 className="text-2xl font-semibold mb-6 border-b pb-2">Emotion Dashboard</h2>
           
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
             {Object.entries(ALL_EMOTIONS).map(([emotion, {icon, color}]) => {
               const confidence = emotionConfidenceMap[emotion] || 0;
+              const threshold = 0.6; // 60% threshold
+              const isPastThreshold = confidence >= threshold;
               
               return (
-                <div key={emotion} className="bg-white shadow p-4 rounded-lg">
+                <div key={emotion} className={`bg-white shadow p-4 rounded-lg border ${isPastThreshold ? 'border-green-500 animate-pulse' : 'border-transparent'}`}>
                   <div className="flex items-center gap-2 mb-2">
                     <div className="text-2xl">
                       {icon}
@@ -285,11 +360,22 @@ const EmotionDetector: React.FC = () => {
                       style={{ width: `${confidence * 100}%` }}
                     ></div>
                   </div>
-                  <p className="text-xs text-right mt-1">{(confidence * 100).toFixed(1)}%</p>
+                  <div className="flex justify-between mt-1 text-xs">
+                    <span className={isPastThreshold ? 'font-bold' : ''}>
+                      {isPastThreshold && '🔊'}
+                    </span>
+                    <span className={`${isPastThreshold ? 'font-bold' : ''}`}>
+                      {(confidence * 100).toFixed(1)}%
+                    </span>
+                  </div>
                 </div>
               );
             })}
           </div>
+        </div>
+
+        <div className="text-center mt-8 text-sm text-gray-500">
+          <p>Audio feedback is played when an emotion passes 60% confidence threshold</p>
         </div>
       </div>
     </div>

@@ -25,6 +25,9 @@ const TextToSpeech = () => {
       if (!response.ok) {
         throw new Error('Failed to convert text to speech');
       }
+      else{
+        console.log(response);
+      }
       
       const blob = await response.blob();
       const url = URL.createObjectURL(blob);

@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
 import { MessageSquare, Play, Pause, Save } from 'lucide-react';
 
 const TextToSpeech = () => {
@@ -6,43 +6,49 @@ const TextToSpeech = () => {
   const [isPlaying, setIsPlaying] = useState(false);
   const [audioUrl, setAudioUrl] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
+  const [rate, setRate] = useState(1);  // speaking rate state
+  const [pitch, setPitch] = useState(1); // pitch state
+  const [voice, setVoice] = useState("JBFqnCBsd6RMkjVDRZzb"); // default voice
   const [audioElement, setAudioElement] = useState<HTMLAudioElement | null>(null);
 
-  const convertTextToSpeech = async () => {
+  const convertTextToSpeech = async (playImmediately = true) => {
     if (!text.trim()) return;
-    
+
     try {
       setIsLoading(true);
-      
+
+      // Pass rate, pitch, and voice to your API if supported!
       const response = await fetch('http://localhost:8000/labs-tts/', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ text }),
+        body: JSON.stringify({ text, rate, pitch, voice }),
       });
-      
+
       if (!response.ok) {
         throw new Error('Failed to convert text to speech');
       }
-      else{
-        console.log(response);
-      }
-      
+
       const blob = await response.blob();
       const url = URL.createObjectURL(blob);
       setAudioUrl(url);
-      
-      // Create and configure audio element
+
+      // Clean up previous audio
+      if (audioElement.current) {
+        audioElement.current.pause();
+        audioElement.current = null;
+      }
+
       const audio = new Audio(url);
-      audio.onended = () => {
-        setIsPlaying(false);
-      };
-      setAudioElement(audio);
-      
-      // Auto-play the audio
-      audio.play();
-      setIsPlaying(true);
+      audio.playbackRate = rate; // Set speaking rate. This also affects pitch in browsers.
+      audio.onended = () => setIsPlaying(false);
+      audioElement.current = audio;
+
+      if (playImmediately) {
+        await audio.play();
+        setIsPlaying(true);
+      }
     } catch (error) {
       console.error('Error converting text to speech:', error);
       alert('Failed to convert text to speech. Please try again.');
@@ -52,26 +58,27 @@ const TextToSpeech = () => {
   };
 
   const handlePlayPause = () => {
-    if (!audioElement && !isPlaying) {
-      // First time playing, need to convert
+    if (!audioElement.current && !isPlaying) {
+      // First time playing, or if previous audio element was cleared
       convertTextToSpeech();
     } else if (audioElement) {
       // Toggle play/pause
       // React fragments. 
       if (isPlaying) {
-        audioElement.pause();
+        audioElement.current.pause();
+        setIsPlaying(false);
       } else {
-        audioElement.play();
+        audioElement.current.playbackRate = rate; // apply rate again if changed
+        audioElement.current.play().then(() => {
+          setIsPlaying(true);
+        });
       }
-      setIsPlaying(!isPlaying);
     }
   };
 
   const saveAudio = () => {
     if (!audioUrl) {
-      // If no audio generated yet, generate it first
-      convertTextToSpeech().then(() => {
-        // After generation, trigger download
+      convertTextToSpeech(false).then(() => {
         triggerDownload();
       });
     } else {
@@ -81,13 +88,31 @@ const TextToSpeech = () => {
 
   const triggerDownload = () => {
     if (!audioUrl) return;
-    
     const a = document.createElement('a');
     a.href = audioUrl;
     a.download = 'speech.mp3';
     document.body.appendChild(a);
     a.click();
     document.body.removeChild(a);
+  };
+
+  // When rate or pitch slider changes, if currently loaded audio, update its playbackRate
+  const handleRateChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const r = parseFloat(e.target.value);
+    setRate(r);
+    if (audioElement.current) {
+      audioElement.current.playbackRate = r;
+    }
+  };
+
+  // This will update pitch state; if your API supports pitch, it'll apply next generation
+  const handlePitchChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setPitch(parseFloat(e.target.value));
+    // For demo, changing pitch slider does nothing unless your API uses pitch
+  };
+
+  const handleVoiceChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
+    setVoice(e.target.value);
   };
 
   return (
@@ -147,15 +172,15 @@ const TextToSpeech = () => {
                   <label className="block text-sm font-medium text-gray-700 mb-2">
                     Voice Selection
                   </label>
-                  <select className="w-full p-2 border rounded-lg">
+                  <select className="w-full p-2 border rounded-lg" value={voice} onChange={handleVoiceChange}>
                     <option value="JBFqnCBsd6RMkjVDRZzb">Natural Voice 1</option>
-                    <option>Natural Voice 2</option>
-                    <option>Natural Voice 3</option>
+                    <option value="EXAVITQu4vr4xnSDxMaL">Natural Voice 2</option>
+                    <option value="IKne3meq5aSn9XLyUdCD">Natural Voice 3</option>
                   </select>
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Speaking Rate
+                    Speaking Rate ({rate})
                   </label>
                   <input
                     type="range"
@@ -163,18 +188,20 @@ const TextToSpeech = () => {
                     max="2"
                     step="0.1"
                     className="w-full"
-                    defaultValue="1"
+                    value={rate}
+                    onChange={handleRateChange}
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">Pitch</label>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">Pitch ({pitch})</label>
                   <input
                     type="range"
                     min="0.5"
                     max="2"
                     step="0.1"
                     className="w-full"
-                    defaultValue="1"
+                    value={pitch}
+                    onChange={handlePitchChange}
                   />
                 </div>
               </div>

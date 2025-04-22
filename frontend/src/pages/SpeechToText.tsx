@@ -1,3 +1,4 @@
+
 "use client"
 
 import React, { useState, useRef, useCallback } from "react"
@@ -29,6 +30,7 @@ const SpeechToText = () => {
   const [error, setError] = useState<string | null>(null)
   const [language, setLanguage] = useState("en-US")
   const [recognitionMode, setRecognitionMode] = useState("continuous")
+  const [detectedLanguage, setDetectedLanguage] = useState<string | null>(null)
 
   const mediaRecorderRef = useRef<MediaRecorder | null>(null)
   const audioChunksRef = useRef<Blob[]>([])
@@ -93,6 +95,11 @@ const SpeechToText = () => {
           setTranscribedText((prev) => prev + " " + result.text)
         } else {
           setTranscribedText(result.text)
+        }
+        
+        // Set the detected language from the backend response
+        if (result.language) {
+          setDetectedLanguage(result.language)
         }
       } else {
         setError(result.error || "Failed to transcribe audio")
@@ -208,25 +215,16 @@ const SpeechToText = () => {
             </div>
 
             <div className="bg-white rounded-lg shadow-lg p-8">
-              <h2 className="text-2xl font-semibold mb-4">Features</h2>
-              <ul className="space-y-2">
-                <li className="flex items-center text-gray-600">
-                  <span className="w-2 h-2 bg-red-600 rounded-full mr-2"></span>
-                  Real-time transcription
-                </li>
-                <li className="flex items-center text-gray-600">
-                  <span className="w-2 h-2 bg-red-600 rounded-full mr-2"></span>
-                  Multiple language support
-                </li>
-                <li className="flex items-center text-gray-600">
-                  <span className="w-2 h-2 bg-red-600 rounded-full mr-2"></span>
-                  Punctuation detection
-                </li>
-                <li className="flex items-center text-gray-600">
-                  <span className="w-2 h-2 bg-red-600 rounded-full mr-2"></span>
-                  Export to multiple formats
-                </li>
-              </ul>
+              <h2 className="text-2xl font-semibold mb-4">Detected Language</h2>
+              {detectedLanguage ? (
+                <div className="p-4 bg-gray-50 rounded-lg">
+                  <p className="text-lg text-gray-700">
+                    {detectedLanguage}
+                  </p>
+                </div>
+              ) : (
+                <p className="text-gray-500">Language will be detected once you record audio...</p>
+              )}
             </div>
           </div>
         </div>

@@ -5,7 +5,6 @@ import itertools
 import numpy as np
 import pandas as pd
 import string
-import base64
 from tensorflow import keras
 
 # Load the saved model

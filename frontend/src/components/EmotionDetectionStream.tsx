@@ -1,5 +1,4 @@
-
-import React, { useEffect, useRef, useState, useCallback } from 'react';
+import React, { useEffect, useRef, useState, useCallback, useMemo } from 'react';
 import { AlertTriangle, Smile, Frown, Meh, Compass, Droplet } from 'lucide-react';
 
 // Define the type for emotion detection results
@@ -14,42 +13,43 @@ interface EmotionDetection {
 
 // Define all possible emotions with their corresponding icons and sounds
 const ALL_EMOTIONS = {
-  'angry': { 
-    icon: <AlertTriangle className="h-6 w-6" color="red" />, 
+  'angry': {
+    icon: <AlertTriangle className="h-6 w-6" color="red" />,
     color: 'bg-red-600',
-    sound: '/sounds/beep.mp3'
+    sound: '../../sounds/angry.mp3' // Adjusted path relative to src/components
   },
-  'disgust': { 
-    icon: <Droplet className="h-6 w-6" color="green" />, 
+  'disgust': {
+    icon: <Droplet className="h-6 w-6" color="green" />,
     color: 'bg-green-600',
-    sound: '/sounds/beep.mp3'
+    sound: '../../sounds/neutral.mp3' // Adjusted path relative to src/components
   },
-  'fear': { 
-    icon: <AlertTriangle className="h-6 w-6" color="purple" />, 
+  'fear': {
+    icon: <AlertTriangle className="h-6 w-6" color="purple" />,
     color: 'bg-purple-600',
-    sound: '/sounds/beep.mp3'
+    sound: '../../sounds/fear.mp3' // Adjusted path relative to src/components
   },
-  'happy': { 
-    icon: <Smile className="h-6 w-6" color="#FFD700" />, 
+  'happy': {
+    icon: <Smile className="h-6 w-6" color="#FFD700" />,
     color: 'bg-yellow-500',
-    sound: '/sounds/beep.mp3'
+    sound: '../../sounds/happy.mp3' // Adjusted path relative to src/components
   },
-  'neutral': { 
-    icon: <Meh className="h-6 w-6" color="gray" />, 
+  'neutral': {
+    icon: <Meh className="h-6 w-6" color="gray" />,
     color: 'bg-gray-500',
-    sound: '/sounds/beep.mp3'
+    sound: '' // You might want to handle this case if needed
   },
-  'sad': { 
-    icon: <Frown className="h-6 w-6" color="blue" />, 
+  'sad': {
+    icon: <Frown className="h-6 w-6" color="blue" />,
     color: 'bg-blue-600',
-    sound: '/sounds/beep.mp3'
+    sound: '../../sounds/sad.mp3' // Adjusted path relative to src/components
   },
-  'surprise': { 
-    icon: <Compass className="h-6 w-6" color="orange" />, 
+  'surprise': {
+    icon: <Compass className="h-6 w-6" color="orange" />,
     color: 'bg-orange-500',
-    sound: '/sounds/beep.mp3'
+    sound: '../../sounds/surprise.mp3' // Adjusted path relative to src/components
   }
 };
+
 
 const EmotionDetector: React.FC = () => {
   const videoRef = useRef<HTMLVideoElement>(null);
@@ -61,7 +61,7 @@ const EmotionDetector: React.FC = () => {
   const animationFrameRef = useRef<number | null>(null);
   const audioRefs = useRef<Record<string, HTMLAudioElement>>({});
   const lastPlayedTimeRef = useRef<Record<string, number>>({});
-  const [emotionThresholdsPassed, setEmotionThresholdsPassed] = useState<Record<string, boolean>>({});
+  const emotionThresholdsPassedRef = useRef<Record<string, boolean>>({});
 
   // Initialize audio elements for each emotion
   useEffect(() => {
@@ -218,35 +218,40 @@ const EmotionDetector: React.FC = () => {
     reader.readAsDataURL(file);
   };
 
-  // Create a map of all emotions with their confidence values from the detected emotions
-  const emotionConfidenceMap = Object.keys(ALL_EMOTIONS).reduce((acc, emotion) => {
-    acc[emotion] = 0; // Default to 0 confidence
-    return acc;
-  }, {} as Record<string, number>);
+  // Use useMemo to calculate emotion confidence map to prevent infinite loops
+  const emotionConfidenceMap = useMemo(() => {
+    // Create a map of all emotions with their confidence values from the detected emotions
+    const confidenceMap = Object.keys(ALL_EMOTIONS).reduce((acc, emotion) => {
+      acc[emotion] = 0; // Default to 0 confidence
+      return acc;
+    }, {} as Record<string, number>);
 
-  // Update confidence values for detected emotions
-  emotions.forEach(detection => {
-    if (detection.emotion in emotionConfidenceMap) {
-      emotionConfidenceMap[detection.emotion] = Math.max(
-        emotionConfidenceMap[detection.emotion], 
-        detection.confidence
-      );
-    }
-  });
+    // Update confidence values for detected emotions
+    emotions.forEach(detection => {
+      if (detection.emotion in confidenceMap) {
+        confidenceMap[detection.emotion] = Math.max(
+          confidenceMap[detection.emotion], 
+          detection.confidence
+        );
+      }
+    });
+
+    return confidenceMap;
+  }, [emotions]);
 
   // Play sounds when emotion confidence passes threshold (60%)
+  // Use useEffect with emotionConfidenceMap dependency to handle threshold crossing
   useEffect(() => {
     const THRESHOLD = 0.6; // 60% confidence threshold
     const COOLDOWN_MS = 3000; // 3 seconds cooldown between sounds for the same emotion
-
-    const newThresholdsPassed: Record<string, boolean> = {};
     const currentTime = Date.now();
 
     Object.entries(emotionConfidenceMap).forEach(([emotion, confidence]) => {
-      const previouslyPassed = emotionThresholdsPassed[emotion] || false;
+      const previouslyPassed = emotionThresholdsPassedRef.current[emotion] || false;
       const nowPassing = confidence >= THRESHOLD;
       
-      newThresholdsPassed[emotion] = nowPassing;
+      // Update our ref with current threshold status
+      emotionThresholdsPassedRef.current[emotion] = nowPassing;
       
       // Play sound if we just crossed the threshold and haven't played recently
       if (nowPassing && !previouslyPassed && audioRefs.current[emotion]) {
@@ -256,15 +261,26 @@ const EmotionDetector: React.FC = () => {
           
           // Play the sound
           audioRefs.current[emotion].currentTime = 0;
-          audioRefs.current[emotion].play().catch(err => console.error('Error playing sound:', err));
+          audioRefs.current[emotion].play().catch(err => console.error(`Error playing sound for ${emotion} at ${confidence.toFixed(2)} confidence:`, err));
           
           // Update last played time
           lastPlayedTimeRef.current[emotion] = currentTime;
         }
       }
     });
+  }, [emotionConfidenceMap]);
 
-    setEmotionThresholdsPassed(newThresholdsPassed);
+  // Create a new state for UI purposes based on the thresholds ref
+  const [displayThresholds, setDisplayThresholds] = useState<Record<string, boolean>>({});
+  
+  // Update the display thresholds state less frequently to avoid render loops
+  useEffect(() => {
+    // Use a timeout to avoid tight render loops
+    const timeoutId = setTimeout(() => {
+      setDisplayThresholds({...emotionThresholdsPassedRef.current});
+    }, 100); // Update display every 100ms
+    
+    return () => clearTimeout(timeoutId);
   }, [emotionConfidenceMap]);
 
   return (

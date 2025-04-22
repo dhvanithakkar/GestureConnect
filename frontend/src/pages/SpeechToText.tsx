@@ -28,7 +28,6 @@ const SpeechToText = () => {
   const [transcribedText, setTranscribedText] = useState("")
   const [isProcessing, setIsProcessing] = useState(false)
   const [error, setError] = useState<string | null>(null)
-  const [language, setLanguage] = useState("en-US")
   const [recognitionMode, setRecognitionMode] = useState("continuous")
   const [detectedLanguage, setDetectedLanguage] = useState<string | null>(null)
 
@@ -95,11 +94,34 @@ const SpeechToText = () => {
           setTranscribedText((prev) => prev + " " + result.text)
         } else {
           setTranscribedText(result.text)
+          if (result.src_lang === "en") {
+            setDetectedLanguage("English")
+          } else if (result.src_lang === "es") {
+            setDetectedLanguage("Spanish")
+          } else if (result.src_lang === "fr") {
+            setDetectedLanguage("French")
+          } else if (result.src_lang === "de") {
+            setDetectedLanguage("German")
+          } else if (result.src_lang === "zh") {
+            setDetectedLanguage("Chinese")
+          } else if (result.src_lang === "ja") {
+            setDetectedLanguage("Japanese")
+          } else if (result.src_lang === "ko") {
+            setDetectedLanguage("Korean")
+          } else if (result.src_lang === "ru") {
+            setDetectedLanguage("Russian")
+          } else if (result.src_lang === "pt") {
+            setDetectedLanguage("Portuguese")
+          } else if (result.src_lang === "hi") {
+            setDetectedLanguage("Hindi")
+          }
         }
         
         // Set the detected language from the backend response
-        if (result.language) {
-          setDetectedLanguage(result.language)
+        if (result.src_lang) {
+          if (result.src_lang === "en") {
+            setDetectedLanguage("English")
+          }
         }
       } else {
         setError(result.error || "Failed to transcribe audio")

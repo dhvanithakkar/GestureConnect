@@ -4,9 +4,9 @@ import { MessageSquare, Play, Pause, Save } from 'lucide-react';
 const TextToSpeech = () => {
   const [text, setText] = useState('');
   const [isPlaying, setIsPlaying] = useState(false);
-  const [audioUrl, setAudioUrl] = useState(null);
+  const [audioUrl, setAudioUrl] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
-  const [audioElement, setAudioElement] = useState(null);
+  const [audioElement, setAudioElement] = useState<HTMLAudioElement | null>(null);
 
   const convertTextToSpeech = async () => {
     if (!text.trim()) return;
@@ -54,6 +54,7 @@ const TextToSpeech = () => {
       convertTextToSpeech();
     } else if (audioElement) {
       // Toggle play/pause
+      // React fragments. 
       if (isPlaying) {
         audioElement.pause();
       } else {

@@ -40,6 +40,8 @@ const SignLanguageApp: React.FC = () => {
   const [textInput, setTextInput] = useState<string>('');
   const [animationFrames, setAnimationFrames] = useState<string[]>([]);
   const [currentFrame, setCurrentFrame] = useState(0);
+  const [signImages, setSignImages] = useState<string[]>([]);
+  const [imageLoadError, setImageLoadError] = useState<boolean>(false);
 
   // WebSocket setup for sign language detection
   const setupWebSocket = () => {
@@ -249,18 +251,88 @@ const SignLanguageApp: React.FC = () => {
     }
   };
 
-  // Handle text-to-sign translation
-  const handleTextToSignTranslation = () => {
+   // Check if image exists with more robust path handling
+  const checkImageExists = (imagePath: string): Promise<boolean> => {
+    return new Promise((resolve) => {
+      const img = new Image();
+      img.src = imagePath;
+      img.onload = () => resolve(true);
+      img.onerror = () => resolve(false);
+    });
+  };
+
+  // Handle text-to-sign translation with improved path resolution
+  const handleTextToSignTranslation = async () => {
     if (!textInput) return;
     
-    // Create an array of placeholder frames for each character
-    // In a real app, these would be fetched from a backend
-    const frames = textInput.split('').map(char => {
-      return `Sign for "${char.toUpperCase()}"`;
-    });
-    
-    setAnimationFrames(frames);
+    // Reset previous state
+    setImageLoadError(false);
     setCurrentFrame(0);
+    
+    // Create an array of image paths for each character
+    const chars = textInput.split('');
+    const frames: string[] = [];
+    const images: string[] = [];
+    
+    // Process each character
+    for (let i = 0; i < chars.length; i++) {
+      const char = chars[i].toUpperCase();
+      
+      // Skip spaces, but keep them in the text
+      if (char === ' ') {
+        frames.push('Space');
+        images.push('');
+        continue;
+      }
+      
+      // Create multiple potential paths to the sign language image
+      const imagePaths = [
+        `${selectedLanguage}/${char}.jpg`,  // Relative to src
+        `../${selectedLanguage}/${char}.jpg`,  // Relative to current file
+        `/${selectedLanguage}/${char}.jpg`,  // Absolute from project root
+        `public/${selectedLanguage}/${char}.jpg`,  // Public folder path
+        `${selectedLanguage}/${char}/${char}.jpg`,  // Relative to src
+        `../${selectedLanguage}/${char}/${char}.jpg`,  // Relative to current file
+        `/${selectedLanguage}/${char}${char}/.jpg`,  // Absolute from project root
+        `public/${selectedLanguage}/${char}/${char}.jpg`  // Public folder path
+      ];
+
+      
+      
+      let existingImagePath = '';
+      
+      // Check each potential path
+      for (const path of imagePaths) {
+        const exists = await checkImageExists(path);
+        if (exists) {
+          existingImagePath = path;
+          break;
+        }
+      }
+      for (const path of imagePaths) {
+        console.log(`Checking path: ${path}`);
+        const exists = await checkImageExists(path);
+        if (exists) {
+          existingImagePath = path;
+          console.log(`Found at ${path}`);
+          break;
+        }
+      }
+      if (existingImagePath) {
+        frames.push(`Sign for "${char}"`);
+        images.push(existingImagePath);
+      } else {
+        // Fallback to text representation if image doesn't exist
+        console.log(`No image found for character "${char}" in any of the checked paths`);
+        frames.push(`Sign for "${char}" (image not found)`);
+        images.push('');
+        setImageLoadError(true);
+      }
+    }
+    
+    // Update state with frames and images
+    setAnimationFrames(frames);
+    setSignImages(images);
   };
 
   return (
@@ -526,8 +598,20 @@ const SignLanguageApp: React.FC = () => {
                   <div className="w-full aspect-square bg-white flex items-center justify-center rounded-lg mb-6 shadow-inner">
                     {animationFrames.length > 0 ? (
                       <div className="text-center">
-                        <div className="text-6xl mb-4">{textInput[currentFrame]}</div>
-                        <p className="text-xl font-medium">{animationFrames[currentFrame]}</p>
+                        {signImages[currentFrame] ? (
+                          <img 
+                            src={signImages[currentFrame]} 
+                            alt={`Sign for ${textInput[currentFrame].toUpperCase()}`}
+                            className="max-h-64 mx-auto mb-4"
+                          />
+                        ) : (
+                          <div className="text-6xl mb-4">
+                            {textInput[currentFrame] === ' ' ? '␣' : textInput[currentFrame].toUpperCase()}
+                          </div>
+                        )}
+                        <p className="text-xl font-medium">
+                          {animationFrames[currentFrame]}
+                        </p>
                       </div>
                     ) : (
                       <p className="text-gray-500">Sign language will appear here</p>

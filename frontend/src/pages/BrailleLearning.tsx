@@ -22,6 +22,24 @@ const BrailleLearning = () => {
     { symbol: '⠋', letter: 'f', dots: '1-2-4' },
     { symbol: '⠛', letter: 'g', dots: '1-2-4-5' },
     { symbol: '⠓', letter: 'h', dots: '1-2-5' },
+    { symbol: '⠊', letter: 'i', dots: '2-4' },
+    { symbol: '⠚', letter: 'j', dots: '2-4-5' },
+    { symbol: '⠅', letter: 'k', dots: '1-3' },
+    { symbol: '⠇', letter: 'l', dots: '1-2-3' },
+    { symbol: '⠍', letter: 'm', dots: '1-3-4' },
+    { symbol: '⠝', letter: 'n', dots: '1-3-4-5' },
+    { symbol: '⠕', letter: 'o', dots: '1-3-5' },
+    { symbol: '⠏', letter: 'p', dots: '1-2-3-4' },
+    { symbol: '⠟', letter: 'q', dots: '1-2-3-4-5' },
+    { symbol: '⠗', letter: 'r', dots: '1-2-3-5' },
+    { symbol: '⠎', letter: 's', dots: '2-3-4' },
+    { symbol: '⠞', letter: 't', dots: '2-3-4-5' },
+    { symbol: '⠥', letter: 'u', dots: '1-3-6' },
+    { symbol: '⠧', letter: 'v', dots: '1-2-3-6' },
+    { symbol: '⠺', letter: 'w', dots: '2-4-5-6' },
+    { symbol: '⠭', letter: 'x', dots: '1-3-4-6' },
+    { symbol: '⠽', letter: 'y', dots: '1-3-4-5-6' },
+    { symbol: '⠵', letter: 'z', dots: '1-3-5-6' }
   ];
 
   // Number representations
@@ -52,8 +70,10 @@ const BrailleLearning = () => {
   const lessons = {
     beginner: [
       { id: 1, title: "Introduction to Braille", chars: brailleCharacters.slice(0, 5) },
-      { id: 2, title: "Letters A-H", chars: brailleCharacters },
-      { id: 3, title: "Practice Reading", chars: brailleCharacters }
+      { id: 2, title: "Letters A-H", chars: brailleCharacters.slice(0, 8) },
+      { id: 3, title: "Letters I-P", chars: brailleCharacters.slice(8, 16) },
+      { id: 4, title: "Letters Q-Z", chars: brailleCharacters.slice(16) },
+      { id: 5, title: "Full Alphabet", chars: brailleCharacters }
     ],
     intermediate: [
       { id: 1, title: "Numbers 0-5", chars: brailleNumbers.slice(0, 6) },

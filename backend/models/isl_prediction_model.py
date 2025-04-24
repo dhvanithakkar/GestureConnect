@@ -47,7 +47,7 @@ def pre_process_landmark(landmark_list):
 
     return temp_landmark_list
 
-def detect_sign_language(frame):
+def detect_isl(frame):
     """Detect sign language in a given frame."""
     # Setup MediaPipe Hands
     with mp_hands.Hands(

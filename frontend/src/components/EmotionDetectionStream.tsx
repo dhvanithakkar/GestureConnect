@@ -13,43 +13,42 @@ interface EmotionDetection {
 
 // Define all possible emotions with their corresponding icons and sounds
 const ALL_EMOTIONS = {
-  'angry': {
-    icon: <AlertTriangle className="h-6 w-6" color="red" />,
+  'angry': { 
+    icon: <AlertTriangle className="h-6 w-6" color="red" />, 
     color: 'bg-red-600',
-    sound: '../../sounds/angry.mp3' // Adjusted path relative to src/components
+    sound: 'https://assets.mixkit.co/active_storage/sfx/212/212-preview.mp3' // Using an example public URL
   },
-  'disgust': {
-    icon: <Droplet className="h-6 w-6" color="green" />,
+  'disgust': { 
+    icon: <Droplet className="h-6 w-6" color="green" />, 
     color: 'bg-green-600',
-    sound: '../../sounds/neutral.mp3' // Adjusted path relative to src/components
+    sound: 'https://assets.mixkit.co/active_storage/sfx/209/209-preview.mp3'
   },
-  'fear': {
-    icon: <AlertTriangle className="h-6 w-6" color="purple" />,
+  'fear': { 
+    icon: <AlertTriangle className="h-6 w-6" color="purple" />, 
     color: 'bg-purple-600',
-    sound: '../../sounds/fear.mp3' // Adjusted path relative to src/components
+    sound: 'https://assets.mixkit.co/active_storage/sfx/2000/2000-preview.mp3'
   },
-  'happy': {
-    icon: <Smile className="h-6 w-6" color="#FFD700" />,
+  'happy': { 
+    icon: <Smile className="h-6 w-6" color="#FFD700" />, 
     color: 'bg-yellow-500',
-    sound: '../../sounds/happy.mp3' // Adjusted path relative to src/components
+    sound: 'https://assets.mixkit.co/active_storage/sfx/220/220-preview.mp3'
   },
-  'neutral': {
-    icon: <Meh className="h-6 w-6" color="gray" />,
+  'neutral': { 
+    icon: <Meh className="h-6 w-6" color="gray" />, 
     color: 'bg-gray-500',
-    sound: '' // You might want to handle this case if needed
+    sound: 'https://assets.mixkit.co/active_storage/sfx/221/221-preview.mp3'
   },
-  'sad': {
-    icon: <Frown className="h-6 w-6" color="blue" />,
+  'sad': { 
+    icon: <Frown className="h-6 w-6" color="blue" />, 
     color: 'bg-blue-600',
-    sound: '../../sounds/sad.mp3' // Adjusted path relative to src/components
+    sound: 'https://assets.mixkit.co/active_storage/sfx/957/957-preview.mp3'
   },
-  'surprise': {
-    icon: <Compass className="h-6 w-6" color="orange" />,
+  'surprise': { 
+    icon: <Compass className="h-6 w-6" color="orange" />, 
     color: 'bg-orange-500',
-    sound: '../../sounds/surprise.mp3' // Adjusted path relative to src/components
+    sound: 'https://assets.mixkit.co/active_storage/sfx/2/2-preview.mp3'
   }
 };
-
 
 const EmotionDetector: React.FC = () => {
   const videoRef = useRef<HTMLVideoElement>(null);

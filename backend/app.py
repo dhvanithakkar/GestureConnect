@@ -5,7 +5,7 @@ import uuid
 import cv2
 import numpy as np
 import base64
-from elevenlabs import ElevenLabs, save
+from elevenlabs import ElevenLabs, VoiceSettings, save
 from fastapi import FastAPI, UploadFile, File, HTTPException, Body, WebSocket, WebSocketDisconnect
 from fastapi.middleware.cors import CORSMiddleware
 from starlette.responses import FileResponse
@@ -14,11 +14,12 @@ from starlette.requests import Request
 from starlette.responses import Response
 from pydantic import BaseModel
 from models.emotion_detection_model import detect_emotion
-from models.isl_prediction_model import detect_sign_language
+from models.isl_prediction_model import detect_isl
+# from models.bsl_prediction_model import detect_bsl
 
 # Set Eleven Labs API Key
 client = ElevenLabs(
-    api_key="sk_f8cbe6100a59a43ed4be55b8c0f3f972e134844516f0e239",
+    api_key="sk_ebb815a15f7d16f616e3897f2859a3d276bdd36c0da98922",
 )
 # Load Whisper model
 voice_model = whisper.load_model("tiny")
@@ -63,6 +64,9 @@ app.add_middleware(
 # Define request body model for TTS
 class TTSNER(BaseModel):
     text: str
+    voiceID: str
+    speed: float
+    style: float
 
 # Text-to-Speech endpoint
 @app.post("/labs-tts/")
@@ -75,11 +79,16 @@ async def labs_tts(request: TTSNER = Body(...)):
             await loop.run_in_executor(None, lambda: os.remove(out))
 
         audio = client.text_to_speech.convert(
-            voice_id="JBFqnCBsd6RMkjVDRZzb",
+            voice_id=request.voiceID,
             output_format="mp3_44100_128",
             text= request.text,
             model_id="eleven_multilingual_v2",
+            voice_settings = VoiceSettings(
+                style=request.style,
+                speed=request.speed
+            )
         )
+
 
         save(audio, out)
         
@@ -152,7 +161,7 @@ async def sign_language_detection_websocket(websocket: WebSocket):
             frame = cv2.imdecode(nparr, cv2.IMREAD_COLOR)
             
             # Detect sign language
-            signs = detect_sign_language(frame)
+            signs = detect_isl(frame)
             
             # Send back detection results
             await websocket.send_json(signs)
@@ -162,6 +171,52 @@ async def sign_language_detection_websocket(websocket: WebSocket):
     except Exception as e:
         print(f"Error in websocket: {e}")
         await websocket.close()
+
+# BSL (British Sign Language) detection WebSocket endpoint
+# @app.websocket("/ws/bsl-sign-language-detection")
+# async def bsl_detection_websocket(websocket: WebSocket):
+#     await websocket.accept()
+    
+#     try:
+#         # Track framerate
+#         frame_count = 0
+#         start_time = asyncio.get_event_loop().time()
+#         framerate = 0.0
+        
+#         while True:
+#             # Receive base64 encoded frame
+#             data = await websocket.receive_text()
+            
+#             # Decode base64 to numpy array
+#             image_bytes = base64.b64decode(data)
+#             nparr = np.frombuffer(image_bytes, np.uint8)
+#             frame = cv2.imdecode(nparr, cv2.IMREAD_COLOR)
+            
+#             # Detect BSL signs
+#             result = detect_bsl(frame)
+            
+#             # Calculate framerate
+#             frame_count += 1
+#             current_time = asyncio.get_event_loop().time()
+#             elapsed = current_time - start_time
+            
+#             if elapsed > 1.0:
+#                 framerate = frame_count / elapsed
+#                 frame_count = 0
+#                 start_time = current_time
+            
+#             # Add framerate to result
+#             result["framerate"] = round(framerate, 2)
+            
+#             # Send back detection results
+#             await websocket.send_json(result)
+    
+#     except WebSocketDisconnect:
+#         print("BSL client disconnected")
+#     except Exception as e:
+#         print(f"Error in BSL websocket: {e}")
+#         await websocket.close()
+
 
 if __name__ == "__main__":
     import uvicorn

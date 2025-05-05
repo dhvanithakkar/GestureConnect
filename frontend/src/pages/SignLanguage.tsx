@@ -12,6 +12,16 @@ interface SignDetection {
   hand_side?: string;
 }
 
+// Define the type for BSL detection results
+interface BSLDetection {
+  prediction: string;
+  letter: string;
+  confidence: number;
+  hands_detected: number;
+  framerate?: number;
+  error?: string;
+}
+
 // Define the type for TTS request
 interface TTSRequest {
   text: string;
@@ -31,6 +41,8 @@ const SignLanguageApp: React.FC = () => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const audioRef = useRef<HTMLAudioElement>(null);
   const [signs, setSigns] = useState<SignDetection[]>([]);
+  const [bslSign, setBslSign] = useState<BSLDetection | null>(null);
+  const [framerate, setFramerate] = useState<number>(0);
   const websocketRef = useRef<WebSocket | null>(null);
   const [isConnected, setIsConnected] = useState(false);
   const [connectionAttempts, setConnectionAttempts] = useState(0);
@@ -41,13 +53,13 @@ const SignLanguageApp: React.FC = () => {
   const [animationFrames, setAnimationFrames] = useState<string[]>([]);
   const [currentFrame, setCurrentFrame] = useState(0);
   const [signImages, setSignImages] = useState<string[]>([]);
-  const [imageLoadError, setImageLoadError] = useState<boolean>(false);
+  const [isLoading, setIsLoading] = useState(false);
 
   // WebSocket setup for sign language detection
   const setupWebSocket = () => {
     // Close existing connection if it exists
     if (websocketRef.current) {
-      websocketRef.current.close();
+      // websocketRef.current.close();
     }
 
     // Create new WebSocket - updated to match backend endpoint
@@ -61,20 +73,44 @@ const SignLanguageApp: React.FC = () => {
 
     ws.onmessage = (event) => {
       try {
-        const detections: SignDetection[] = JSON.parse(event.data);
-        setSigns(detections);
+        const data = JSON.parse(event.data);
         
-        // Only update translated text if translation is active
-        if (isTranslating && detections.length > 0) {
-          const signText = detections.map(detection => detection.sign).join(' ');
-          // Only add the sign if it's different from the last character in translatedText
-          setTranslatedText(prevText => {
-            const lastWord = prevText.split(' ').pop() || '';
-            if (lastWord !== signText) {
-              return prevText + (prevText ? ' ' : '') + signText;
-            }
-            return prevText;
-          });
+        // Handle BSL response format differently
+        if (selectedLanguage === 'bsl') {
+          const bslData = data as BSLDetection;
+          setBslSign(bslData);
+          if (bslData.framerate) {
+            setFramerate(bslData.framerate);
+          }
+          
+          // Only update translated text if translation is active and there's a prediction
+          if (isTranslating && bslData.prediction && bslData.prediction !== 'NO_HANDS_DETECTED' && bslData.prediction !== 'ERROR') {
+            // Only add the sign if it's different from the last word in translatedText
+            setTranslatedText(prevText => {
+              const lastWord = prevText.split(' ').pop() || '';
+              if (lastWord !== bslData.letter) {
+                return prevText + (prevText ? ' ' : '') + bslData.letter;
+              }
+              return prevText;
+            });
+          }
+        } else {
+          // Handle ASL and ISL response format (array of detections)
+          const detections: SignDetection[] = data;
+          setSigns(detections);
+          
+          // Only update translated text if translation is active
+          if (isTranslating && detections.length > 0) {
+            const signText = detections.map(detection => detection.sign).join(' ');
+            // Only add the sign if it's different from the last character in translatedText
+            setTranslatedText(prevText => {
+              const lastWord = prevText.split(' ').pop() || '';
+              if (lastWord !== signText) {
+                return prevText + (prevText ? ' ' : '') + signText;
+              }
+              return prevText;
+            });
+          }
         }
       } catch (error) {
         console.error('Error parsing WebSocket message:', error);
@@ -158,15 +194,32 @@ const SignLanguageApp: React.FC = () => {
         }
         
         if (websocketRef.current) {
-          websocketRef.current.close();
+          // websocketRef.current.close();
         }
       };
     } else if (mode === 'signToText' && websocketRef.current) {
       // Close WebSocket if not in camera mode
-      websocketRef.current.close();
+      // websocketRef.current.close();
       websocketRef.current = null;
     }
   }, [mode, inputMethod, selectedLanguage, connectionAttempts, isTranslating]);
+
+  // Reset display states when changing language
+  useEffect(() => {
+    setBslSign(null);
+    setSigns([]);
+    setTranslatedText('');
+    
+    // Close existing websocket connection to create a new one with the correct endpoint
+    if (websocketRef.current) {
+      // websocketRef.current.close();
+      websocketRef.current = null;
+    }
+    
+    if (isTranslating) {
+      setupWebSocket();
+    }
+  }, [selectedLanguage]);
 
   // Handle file upload for image processing
   const handleFileUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -201,6 +254,7 @@ const SignLanguageApp: React.FC = () => {
       setIsTranslating(true);
       setTranslatedText('');
       setSigns([]);
+      setBslSign(null);
       
       // Ensure WebSocket connection is active
       if (!isConnected && websocketRef.current?.readyState !== WebSocket.OPEN) {
@@ -251,88 +305,49 @@ const SignLanguageApp: React.FC = () => {
     }
   };
 
-   // Check if image exists with more robust path handling
-  const checkImageExists = (imagePath: string): Promise<boolean> => {
-    return new Promise((resolve) => {
-      const img = new Image();
-      img.src = imagePath;
-      img.onload = () => resolve(true);
-      img.onerror = () => resolve(false);
-    });
-  };
-
-  // Handle text-to-sign translation with improved path resolution
-  const handleTextToSignTranslation = async () => {
+  // Handle text-to-sign translation
+  const handleTextToSignTranslation = () => {
     if (!textInput) return;
     
-    // Reset previous state
-    setImageLoadError(false);
-    setCurrentFrame(0);
+    setIsLoading(true);
     
-    // Create an array of image paths for each character
-    const chars = textInput.split('');
-    const frames: string[] = [];
-    const images: string[] = [];
+    // Clean up the input text (uppercase for consistency, remove special characters)
+    const cleanedText = textInput.toUpperCase().replace(/[^A-Z0-9 ]/g, '');
     
-    // Process each character
-    for (let i = 0; i < chars.length; i++) {
-      const char = chars[i].toUpperCase();
-      
-      // Skip spaces, but keep them in the text
+    // Generate image paths for each character
+    const imagePaths = cleanedText.split('').map(char => {
+      // For spaces, use a special image or just return empty
       if (char === ' ') {
-        frames.push('Space');
-        images.push('');
-        continue;
+        return `/${selectedLanguage}/space.jpg`;
       }
-      
-      // Create multiple potential paths to the sign language image
-      const imagePaths = [
-        `${selectedLanguage}/${char}.jpg`,  // Relative to src
-        `../${selectedLanguage}/${char}.jpg`,  // Relative to current file
-        `/${selectedLanguage}/${char}.jpg`,  // Absolute from project root
-        `public/${selectedLanguage}/${char}.jpg`,  // Public folder path
-        `${selectedLanguage}/${char}/${char}.jpg`,  // Relative to src
-        `../${selectedLanguage}/${char}/${char}.jpg`,  // Relative to current file
-        `/${selectedLanguage}/${char}${char}/.jpg`,  // Absolute from project root
-        `public/${selectedLanguage}/${char}/${char}.jpg`  // Public folder path
-      ];
+      // Path to the image based on the character and selected sign language
+      return `/${selectedLanguage}/${char}.jpg`;
+    });
+    
+    setSignImages(imagePaths);
+    setAnimationFrames(cleanedText.split(''));
+    setCurrentFrame(0);
+    setIsLoading(false);
+  };
 
-      
-      
-      let existingImagePath = '';
-      
-      // Check each potential path
-      for (const path of imagePaths) {
-        const exists = await checkImageExists(path);
-        if (exists) {
-          existingImagePath = path;
-          break;
-        }
-      }
-      for (const path of imagePaths) {
-        console.log(`Checking path: ${path}`);
-        const exists = await checkImageExists(path);
-        if (exists) {
-          existingImagePath = path;
-          console.log(`Found at ${path}`);
-          break;
-        }
-      }
-      if (existingImagePath) {
-        frames.push(`Sign for "${char}"`);
-        images.push(existingImagePath);
-      } else {
-        // Fallback to text representation if image doesn't exist
-        console.log(`No image found for character "${char}" in any of the checked paths`);
-        frames.push(`Sign for "${char}" (image not found)`);
-        images.push('');
-        setImageLoadError(true);
-      }
+  // Render BSL detection overlay
+  const renderBSLOverlay = () => {
+    if (!bslSign || !bslSign.prediction || bslSign.prediction === 'NO_HANDS_DETECTED') {
+      return null;
     }
     
-    // Update state with frames and images
-    setAnimationFrames(frames);
-    setSignImages(images);
+    return (
+      <div className="absolute bottom-4 left-4 bg-blue-500 text-white px-3 py-2 rounded-lg shadow-lg">
+        <div className="flex items-center gap-2">
+          <Type className="w-4 h-4" />
+          <span className="font-semibold">{bslSign.letter}</span>
+          <span>({(bslSign.confidence * 100).toFixed(1)}%)</span>
+        </div>
+        <div className="text-xs mt-1">
+          Hands: {bslSign.hands_detected} | FPS: {framerate.toFixed(1)}
+        </div>
+      </div>
+    );
   };
 
   return (
@@ -408,26 +423,31 @@ const SignLanguageApp: React.FC = () => {
                         ref={canvasRef} 
                         style={{ display: 'none' }} 
                       />
-                      {signs.map((sign, index) => (
-                        <div 
-                          key={index} 
-                          className="absolute border-2 border-blue-500 flex items-center"
-                          style={{
-                            left: `${sign.x}px`,
-                            top: `${sign.y}px`,
-                            width: `${sign.width}px`,
-                            height: `${sign.height}px`
-                          }}
-                        >
+                      {/* Render either BSL overlay or ASL/ISL detection boxes based on selected language */}
+                      {selectedLanguage === 'bsl' ? (
+                        renderBSLOverlay()
+                      ) : (
+                        signs.map((sign, index) => (
                           <div 
-                            className="absolute bottom-full left-0 bg-blue-500 text-white text-xs px-1 rounded flex items-center gap-1"
+                            key={index} 
+                            className="absolute border-2 border-blue-500 flex items-center"
+                            style={{
+                              left: `${sign.x}px`,
+                              top: `${sign.y}px`,
+                              width: `${sign.width}px`,
+                              height: `${sign.height}px`
+                            }}
                           >
-                            <Type className="w-3 h-3" />
-                            {sign.sign} ({(sign.confidence * 100).toFixed(1)}%)
-                            {sign.hand_side && ` - ${sign.hand_side}`}
+                            <div 
+                              className="absolute bottom-full left-0 bg-blue-500 text-white text-xs px-1 rounded flex items-center gap-1"
+                            >
+                              <Type className="w-3 h-3" />
+                              {sign.sign} ({(sign.confidence * 100).toFixed(1)}%)
+                              {sign.hand_side && ` - ${sign.hand_side}`}
+                            </div>
                           </div>
-                        </div>
-                      ))}
+                        ))
+                      )}
                     </>
                   ) : (
                     <div className="flex items-center justify-center h-64">
@@ -525,8 +545,9 @@ const SignLanguageApp: React.FC = () => {
               <button 
                 className="w-full bg-green-600 text-white py-2 px-4 rounded-lg hover:bg-green-700 transition-colors"
                 onClick={handleTextToSignTranslation}
+                disabled={isLoading || !textInput}
               >
-                Translate to Sign Language
+                {isLoading ? 'Loading...' : 'Translate to Sign Language'}
               </button>
             </div>
           )}
@@ -568,13 +589,28 @@ const SignLanguageApp: React.FC = () => {
                       <div className="p-4 bg-gray-50 rounded-lg">
                         <h3 className="font-semibold mb-2">{selectedLanguage.toUpperCase()}</h3>
                         <p className="text-gray-600">
-                          {signs.length > 0 
-                            ? signs.map(sign => sign.sign).join(' ') 
-                            : isTranslating 
-                              ? 'Waiting for signs...' 
-                              : 'Start translation to detect signs'
-                          }
+                          {selectedLanguage === 'bsl' ? (
+                            bslSign && bslSign.prediction !== 'NO_HANDS_DETECTED' 
+                              ? bslSign.letter
+                              : isTranslating 
+                                ? 'Waiting for signs...' 
+                                : 'Start translation to detect signs'
+                          ) : (
+                            signs.length > 0 
+                              ? signs.map(sign => sign.sign).join(' ') 
+                              : isTranslating 
+                                ? 'Waiting for signs...' 
+                                : 'Start translation to detect signs'
+                          )}
                         </p>
+                        {/* Show BSL stats if applicable */}
+                        {selectedLanguage === 'bsl' && bslSign && (
+                          <div className="mt-2 text-xs text-gray-500">
+                            <p>Hands detected: {bslSign.hands_detected}</p>
+                            <p>Confidence: {(bslSign.confidence * 100).toFixed(1)}%</p>
+                            <p>Framerate: {framerate.toFixed(1)} FPS</p>
+                          </div>
+                        )}
                       </div>
                       <div className="p-4 bg-gray-50 rounded-lg">
                         <h3 className="font-semibold mb-2">{targetLanguage.toUpperCase()}</h3>
@@ -598,20 +634,26 @@ const SignLanguageApp: React.FC = () => {
                   <div className="w-full aspect-square bg-white flex items-center justify-center rounded-lg mb-6 shadow-inner">
                     {animationFrames.length > 0 ? (
                       <div className="text-center">
+                        {/* Display image from path instead of placeholder text */}
                         {signImages[currentFrame] ? (
-                          <img 
-                            src={signImages[currentFrame]} 
-                            alt={`Sign for ${textInput[currentFrame].toUpperCase()}`}
-                            className="max-h-64 mx-auto mb-4"
-                          />
-                        ) : (
-                          <div className="text-6xl mb-4">
-                            {textInput[currentFrame] === ' ' ? '␣' : textInput[currentFrame].toUpperCase()}
+                          <div className="flex flex-col items-center">
+                            <img 
+                              src={signImages[currentFrame]} 
+                              alt={`Sign for ${animationFrames[currentFrame]}`}
+                              className="max-w-full max-h-64 object-contain mb-4"
+                              onError={(e) => {
+                                // If image fails to load, show a placeholder
+                                (e.target as HTMLImageElement).src = "/api/placeholder/200/200";
+                                (e.target as HTMLImageElement).alt = "Image not available";
+                              }}
+                            />
+                            <p className="text-xl font-medium mt-2">
+                              {animationFrames[currentFrame] === " " ? "SPACE" : animationFrames[currentFrame]}
+                            </p>
                           </div>
+                        ) : (
+                          <p>Loading image...</p>
                         )}
-                        <p className="text-xl font-medium">
-                          {animationFrames[currentFrame]}
-                        </p>
                       </div>
                     ) : (
                       <p className="text-gray-500">Sign language will appear here</p>

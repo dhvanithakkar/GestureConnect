@@ -5,7 +5,7 @@ import uuid
 import cv2
 import numpy as np
 import base64
-from elevenlabs import ElevenLabs, VoiceSettings, save
+from elevenlabs import ElevenLabs, save
 from fastapi import FastAPI, UploadFile, File, HTTPException, Body, WebSocket, WebSocketDisconnect
 from fastapi.middleware.cors import CORSMiddleware
 from starlette.responses import FileResponse
@@ -15,7 +15,7 @@ from starlette.responses import Response
 from pydantic import BaseModel
 from models.emotion_detection_model import detect_emotion
 from models.isl_prediction_model import detect_isl
-# from models.bsl_prediction_model import detect_bsl
+from models.bsl_prediction_model import detect_bsl  # Import new BSL model
 
 # Set Eleven Labs API Key
 client = ElevenLabs(
@@ -64,9 +64,6 @@ app.add_middleware(
 # Define request body model for TTS
 class TTSNER(BaseModel):
     text: str
-    voiceID: str
-    speed: float
-    style: float
 
 # Text-to-Speech endpoint
 @app.post("/labs-tts/")
@@ -79,16 +76,11 @@ async def labs_tts(request: TTSNER = Body(...)):
             await loop.run_in_executor(None, lambda: os.remove(out))
 
         audio = client.text_to_speech.convert(
-            voice_id=request.voiceID,
+            voice_id="JBFqnCBsd6RMkjVDRZzb",
             output_format="mp3_44100_128",
             text= request.text,
             model_id="eleven_multilingual_v2",
-            voice_settings = VoiceSettings(
-                style=request.style,
-                speed=request.speed
-            )
         )
-
 
         save(audio, out)
         
@@ -149,7 +141,6 @@ async def emotion_detection_websocket(websocket: WebSocket):
 @app.websocket("/ws/isl-sign-language-detection")
 async def sign_language_detection_websocket(websocket: WebSocket):
     await websocket.accept()
-    
     try:
         while True:
             # Receive base64 encoded frame
@@ -173,50 +164,65 @@ async def sign_language_detection_websocket(websocket: WebSocket):
         await websocket.close()
 
 # BSL (British Sign Language) detection WebSocket endpoint
-# @app.websocket("/ws/bsl-sign-language-detection")
-# async def bsl_detection_websocket(websocket: WebSocket):
-#     await websocket.accept()
+@app.websocket("/ws/bsl-sign-language-detection")
+async def bsl_detection_websocket(websocket: WebSocket):
+    await websocket.accept()
     
-#     try:
-#         # Track framerate
-#         frame_count = 0
-#         start_time = asyncio.get_event_loop().time()
-#         framerate = 0.0
+    try:
+        # Track framerate
+        frame_count = 0
+        start_time = asyncio.get_event_loop().time()
+        framerate = 0.0
         
-#         while True:
-#             # Receive base64 encoded frame
-#             data = await websocket.receive_text()
+        while True:
+            # Receive base64 encoded frame
+            data = await websocket.receive_text()
             
-#             # Decode base64 to numpy array
-#             image_bytes = base64.b64decode(data)
-#             nparr = np.frombuffer(image_bytes, np.uint8)
-#             frame = cv2.imdecode(nparr, cv2.IMREAD_COLOR)
+            # Decode base64 to numpy array
+            image_bytes = base64.b64decode(data)
+            nparr = np.frombuffer(image_bytes, np.uint8)
+            frame = cv2.imdecode(nparr, cv2.IMREAD_COLOR)
             
-#             # Detect BSL signs
-#             result = detect_bsl(frame)
+            # Detect BSL signs
+            result = detect_bsl(frame)
             
-#             # Calculate framerate
-#             frame_count += 1
-#             current_time = asyncio.get_event_loop().time()
-#             elapsed = current_time - start_time
+            # Calculate framerate
+            frame_count += 1
+            current_time = asyncio.get_event_loop().time()
+            elapsed = current_time - start_time
             
-#             if elapsed > 1.0:
-#                 framerate = frame_count / elapsed
-#                 frame_count = 0
-#                 start_time = current_time
+            if elapsed > 1.0:
+                framerate = frame_count / elapsed
+                frame_count = 0
+                start_time = current_time
             
-#             # Add framerate to result
-#             result["framerate"] = round(framerate, 2)
+            # Add framerate to result
+            result["framerate"] = round(framerate, 2)
             
-#             # Send back detection results
-#             await websocket.send_json(result)
+            # Send back detection results
+            await websocket.send_json(result)
     
-#     except WebSocketDisconnect:
-#         print("BSL client disconnected")
-#     except Exception as e:
-#         print(f"Error in BSL websocket: {e}")
-#         await websocket.close()
+    except WebSocketDisconnect:
+        print("BSL client disconnected")
+    except Exception as e:
+        print(f"Error in BSL websocket: {e}")
+        await websocket.close()
 
+# REST API endpoint for single frame BSL detection (for testing or one-off detection)
+@app.post("/bsl-detect/")
+async def detect_bsl_sign(file: UploadFile = File(...)):
+    try:
+        # Read and decode the image
+        contents = await file.read()
+        nparr = np.frombuffer(contents, np.uint8)
+        frame = cv2.imdecode(nparr, cv2.IMREAD_COLOR)
+        
+        # Detect BSL sign
+        result = detect_bsl(frame)
+        
+        return result
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
 
 if __name__ == "__main__":
     import uvicorn

@@ -193,7 +193,7 @@ const TextToSpeech = () => {
                 </li>
                 <li className="flex items-center">
                   <span className="w-2 h-2 bg-purple-600 rounded-full mr-2"></span>
-                  Multiple language support
+                  Flexible emphasis on style
                 </li>
                 <li className="flex items-center">
                   <span className="w-2 h-2 bg-purple-600 rounded-full mr-2"></span>

@@ -8,7 +8,7 @@ import string
 from tensorflow import keras
 
 # Load the saved model
-model = keras.models.load_model("islprediction.h5")
+model = keras.models.load_model("models/islprediction.h5")
 
 # MediaPipe setup
 mp_drawing = mp.solutions.drawing_utils

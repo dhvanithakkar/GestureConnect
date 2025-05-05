@@ -36,7 +36,7 @@ const ALL_EMOTIONS = {
   'neutral': { 
     icon: <Meh className="h-6 w-6" color="gray" />, 
     color: 'bg-gray-500',
-    sound: 'https://assets.mixkit.co/active_storage/sfx/221/221-preview.mp3'
+    sound: ''
   },
   'sad': { 
     icon: <Frown className="h-6 w-6" color="blue" />, 

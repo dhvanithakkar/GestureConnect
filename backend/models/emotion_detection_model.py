@@ -1,14 +1,13 @@
 import cv2
 import numpy as np
-import base64
 from keras.models import model_from_json # type: ignore
 
 # Load the emotion detection model
-json_file = open("emotiondetector.json", "r")
+json_file = open("models/emotiondetector.json", "r")
 model_json = json_file.read()
 json_file.close()
 model = model_from_json(model_json)
-model.load_weights("emotiondetector.h5")
+model.load_weights("models/emotiondetector.h5")
 
 # Load Haar Cascade for face detection
 haar_file = cv2.data.haarcascades + 'haarcascade_frontalface_default.xml'

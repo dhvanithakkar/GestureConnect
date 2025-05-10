@@ -326,7 +326,7 @@ const SignLanguageDetector: React.FC = () => {
                     {signs.map((sign, index) => (
                       <div 
                         key={index} 
-                        className="absolute border-2 border-blue-500 flex items-center"
+                        // className="absolute border-2 border-blue-500 flex items-center"
                         style={{
                           left: `${sign.x}px`,
                           top: `${sign.y}px`,
@@ -372,7 +372,7 @@ const SignLanguageDetector: React.FC = () => {
                   onChange={(e) => setSelectedLanguage(e.target.value)}
                 >
                   <option value="isl">Indian Sign Language (ISL)</option>
-                  <option value="asl">American Sign Language (ASL)</option>
+                  <option value="isl">American Sign Language (ASL)</option>
                   <option value="bsl">British Sign Language (BSL)</option>
                 </select>
               </div>

@@ -309,7 +309,7 @@ const EmotionDetector: React.FC = () => {
           {emotions.map((emotion, index) => (
             <div 
               key={index} 
-              className="absolute border-2 border-green-500 flex items-center justify-center"
+              // className="absolute border-2 border-green-500 flex items-center justify-center"
               style={{
                 left: `${emotion.x}px`,
                 top: `${emotion.y}px`,

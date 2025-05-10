@@ -116,7 +116,7 @@ const SpeechToText = () => {
             setDetectedLanguage("Hindi")
           }
         }
-        
+
         // Set the detected language from the backend response
         if (result.src_lang) {
           if (result.src_lang === "en") {
@@ -183,13 +183,12 @@ const SpeechToText = () => {
           <div className="bg-white rounded-lg shadow-lg p-8">
             <div className="flex flex-col items-center justify-center space-y-6">
               <div
-                className={`w-32 h-32 rounded-full flex items-center justify-center cursor-pointer transition-all ${
-                  isRecording
+                className={`w-32 h-32 rounded-full flex items-center justify-center cursor-pointer transition-all ${isRecording
                     ? "bg-red-100 text-red-600 animate-pulse"
                     : isProcessing
                       ? "bg-yellow-100 text-yellow-600"
                       : "bg-gray-100 text-gray-600 hover:bg-gray-200"
-                }`}
+                  }`}
                 onClick={toggleRecording}
                 aria-label={isRecording ? "Stop recording" : "Start recording"}
                 role="button"

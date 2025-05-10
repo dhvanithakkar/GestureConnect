@@ -31,7 +31,7 @@ const SignLanguageApp: React.FC = () => {
   // Primary state
   const [mode, setMode] = useState<'signToText' | 'textToSign'>('signToText');
   const [inputMethod, setInputMethod] = useState<'camera' | 'upload'>('camera');
-  const [selectedLanguage, setSelectedLanguage] = useState<string>('asl');
+  const [selectedLanguage, setSelectedLanguage] = useState<string>('bsl');
   const [targetLanguage, setTargetLanguage] = useState<string>('en');
   const [translatedText, setTranslatedText] = useState<string>('');
   const [isTranslating, setIsTranslating] = useState<boolean>(false);
@@ -430,7 +430,7 @@ const SignLanguageApp: React.FC = () => {
                         signs.map((sign, index) => (
                           <div 
                             key={index} 
-                            className="absolute border-2 border-blue-500 flex items-center"
+                            // className="absolute border-2 border-blue-500 flex items-center"
                             style={{
                               left: `${sign.x}px`,
                               top: `${sign.y}px`,
@@ -476,7 +476,7 @@ const SignLanguageApp: React.FC = () => {
                     value={selectedLanguage}
                     onChange={(e) => setSelectedLanguage(e.target.value)}
                   >
-                    <option value="asl">American Sign Language (ASL)</option>
+                    <option value="isl">American Sign Language (ASL)</option>
                     <option value="bsl">British Sign Language (BSL)</option>
                     <option value="isl">Indian Sign Language (ISL)</option>
                   </select>
@@ -535,7 +535,7 @@ const SignLanguageApp: React.FC = () => {
                     value={selectedLanguage}
                     onChange={(e) => setSelectedLanguage(e.target.value)}
                   >
-                    <option value="asl">American Sign Language (ASL)</option>
+                    <option value="isl">American Sign Language (ASL)</option>
                     <option value="bsl">British Sign Language (BSL)</option>
                     <option value="isl">Indian Sign Language (ISL)</option>
                   </select>
